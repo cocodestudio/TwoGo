@@ -89,16 +89,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     HapticFeedback.selectionClick();
     final result = await Navigator.push<String>(
       context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => LocationSelectScreen(isFrom: isFrom),
-        transitionsBuilder: (_, anim, __, child) => SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-          child: child,
-        ),
-        transitionDuration: const Duration(milliseconds: 380),
+      MaterialPageRoute(
+        builder: (context) => LocationSelectScreen(isFrom: isFrom),
       ),
     );
     if (result != null) {
