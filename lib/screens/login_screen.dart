@@ -1,7 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../home/home_screen.dart';
+import '../utils/api_config.dart';
+import '../utils/custom_toast.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -11,12 +17,10 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
-  // ── Palette ──────────────────────────────────────────────
   static const Color navy = Color(0xFF022B3A);
   static const Color yellow = Color(0xFFF7B32B);
   static const Color grey = Color(0xFF817F75);
 
-  // ── Controllers ──────────────────────────────────────────
   late TabController _tabCtrl;
   late AnimationController _slideCtrl;
   late AnimationController _orbCtrl;
@@ -33,6 +37,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
 
   bool _obscurePass = true;
   bool _obscureConfirm = true;
+  bool _isLoading = false; // Loading State Backend ke liye
   String _role = 'passenger';
   String? _idImagePath;
 
@@ -71,7 +76,9 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     if (_tabCtrl.indexIsChanging) {
       HapticFeedback.selectionClick();
       _slideCtrl.forward(from: 0.0);
-      setState(() {});
+      setState(() {
+        _isLoading = false; // Tab change par loading reset
+      });
     }
   }
 
@@ -90,6 +97,161 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
 
   bool get _isLogin => _tabCtrl.index == 0;
 
+  Future<void> _handleAuth() async {
+    FocusScope.of(context).unfocus();
+
+    if (_isLogin) {
+      await _login();
+    } else {
+      await _register();
+    }
+  }
+
+  Future<void> _login() async {
+    if (_emailCtrl.text.isEmpty || _passCtrl.text.isEmpty) {
+      CustomToast.show(
+        context,
+        'Please Enter Email or Password!',
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final Map<String, String> headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      final Map<String, dynamic> body = {
+        'email': _emailCtrl.text.trim(),
+        'password': _passCtrl.text,
+      };
+      print("Connecting to: ${ApiConfig.login}");
+
+      final response = await http
+          .post(
+            Uri.parse(ApiConfig.login),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', data['token']);
+        await prefs.setString('user_role', data['user']['role']);
+
+        CustomToast.show(context, 'Maza aa gaya! Login Success.');
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      } else {
+        CustomToast.show(
+          context,
+          data['message'] ?? 'Login fail ho gaya',
+          isError: true,
+        );
+      }
+    } catch (e) {
+      print("Login Error: $e");
+      CustomToast.show(
+        context,
+        'Network Error: Check if server is running',
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _register() async {
+    // 1. Frontend Validations
+    if (_nameCtrl.text.isEmpty ||
+        _emailCtrl.text.isEmpty ||
+        _passCtrl.text.isEmpty ||
+        _rollCtrl.text.isEmpty) {
+      CustomToast.show(context, 'Please fill all fields', isError: true);
+      return;
+    }
+    if (_passCtrl.text != _confirmCtrl.text) {
+      CustomToast.show(context, 'Passwords do not match', isError: true);
+      return;
+    }
+    if (_idImagePath == null) {
+      CustomToast.show(
+        context,
+        'Please upload your ID Card for verification',
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse(ApiConfig.register),
+      );
+      request.headers.addAll({'Accept': 'application/json'});
+
+      request.fields['name'] = _nameCtrl.text.trim();
+      request.fields['email'] = _emailCtrl.text.trim();
+      request.fields['password'] = _passCtrl.text;
+      request.fields['password_confirmation'] = _confirmCtrl.text;
+      request.fields['roll_number'] = _rollCtrl.text.trim();
+      request.fields['role'] = _role;
+
+      if (_idImagePath != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('id_image', _idImagePath!),
+        );
+      }
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201 && data['success'] == true) {
+        CustomToast.show(
+          context,
+          'Account submitted! Please wait for admin approval to login.',
+        );
+
+        _nameCtrl.clear();
+        _passCtrl.clear();
+        _confirmCtrl.clear();
+        _rollCtrl.clear();
+        setState(() => _idImagePath = null);
+
+        _tabCtrl.animateTo(0);
+      } else {
+        CustomToast.show(
+          context,
+          data['message'] ??
+              'Registration failed. Roll number or Email might be taken.',
+          isError: true,
+        );
+      }
+    } catch (e) {
+      CustomToast.show(
+        context,
+        'Network error. Try again later.',
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   // ════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
@@ -103,7 +265,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         builder: (context, _) {
           return Stack(
             children: [
-              // ── Titanium gradient bg ──────────────────
+              // ... (Same UI Code logic as before for backgrounds and orbs)
               Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -117,8 +279,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-
-              // ── Floating orb: navy top-left ───────────
               Positioned(
                 top: -size.width * 0.32 + _orbFloat.value,
                 left: -size.width * 0.32,
@@ -133,8 +293,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-
-              // ── Floating orb: yellow bottom-right ─────
               Positioned(
                 bottom: -size.width * 0.22 - _orbFloat.value,
                 right: -size.width * 0.22,
@@ -152,30 +310,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-
-              // ── Mid yellow pill ────────────────────────
-              Positioned(
-                top: size.height * 0.48 + _orbFloat.value * 0.6,
-                right: -size.width * 0.1,
-                child: Transform.rotate(
-                  angle: 0.5,
-                  child: Container(
-                    width: size.width * 0.28,
-                    height: size.width * 0.07,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(100),
-                      gradient: LinearGradient(
-                        colors: [
-                          yellow.withOpacity(0.10),
-                          yellow.withOpacity(0.0),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // ── Main scrollable content ───────────────
               SafeArea(
                 child: LayoutBuilder(
                   builder: (ctx, constraints) {
@@ -193,23 +327,12 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 8),
-
-                            // ── Logo row ─────────────────
                             _buildLogo(),
-
                             const SizedBox(height: 34),
-
-                            // ── Tab pill ─────────────────
                             _buildTabPill(),
-
                             const SizedBox(height: 28),
-
-                            // ── Animated headline ─────────
                             _buildHeadline(),
-
                             const SizedBox(height: 26),
-
-                            // ── Animated form card ────────
                             SlideTransition(
                               position: _formSlide,
                               child: FadeTransition(
@@ -217,18 +340,12 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                 child: _buildFormCard(),
                               ),
                             ),
-
-                            // ── Forgot password ───────────
                             if (_isLogin) ...[
                               const SizedBox(height: 10),
                               _buildForgotPassword(),
                             ],
-
                             const SizedBox(height: 28),
-
-                            // ── CTA button ────────────────
-                            _buildCTAButton(),
-
+                            _buildCTAButton(), // Button updated with logic
                             const SizedBox(height: 32),
                           ],
                         ),
@@ -324,18 +441,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   Widget _buildHeadline() {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 320),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, anim) => FadeTransition(
-        opacity: anim,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.08),
-            end: Offset.zero,
-          ).animate(anim),
-          child: child,
-        ),
-      ),
       child: Column(
         key: ValueKey(_isLogin),
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,7 +503,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Register-only: Full Name
             if (!_isLogin) ...[
               _field(
                 label: "Full Name",
@@ -407,16 +511,12 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 16),
             ],
-
-            // Email
             _field(
               label: "Email / University ID",
               icon: Icons.alternate_email_rounded,
               controller: _emailCtrl,
             ),
             const SizedBox(height: 16),
-
-            // Password
             _field(
               label: "Password",
               icon: Icons.lock_outline_rounded,
@@ -425,8 +525,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               obscure: _obscurePass,
               onToggle: () => setState(() => _obscurePass = !_obscurePass),
             ),
-
-            // Register-only: Confirm Password + Role
             if (!_isLogin) ...[
               const SizedBox(height: 16),
               _field(
@@ -473,7 +571,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
           onTap: _pickIdImage,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
             height: _idImagePath != null ? 110 : 72,
             width: double.infinity,
             decoration: BoxDecoration(
@@ -486,7 +583,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                     ? yellow.withOpacity(0.6)
                     : grey.withOpacity(0.22),
                 width: _idImagePath != null ? 1.5 : 1,
-                style: BorderStyle.solid,
               ),
             ),
             child: _idImagePath != null
@@ -630,7 +726,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     required String subtitle,
   }) {
     final selected = _role == role;
-
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -638,7 +733,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
           color: selected ? navy : const Color(0xFFF5F5F0),
@@ -693,7 +787,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               ),
             ),
             const SizedBox(height: 8),
-            // Selected check or empty circle
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -727,7 +820,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       alignment: Alignment.centerRight,
       child: GestureDetector(
         onTap: () => debugPrint("Forgot Password"),
-        behavior: HitTestBehavior.opaque,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Text(
@@ -749,10 +841,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: () =>
-            debugPrint(_isLogin ? "Login tapped" : "Register as $_role"),
+        onPressed: _isLoading ? null : _handleAuth, // Logic Connected here
         style: ElevatedButton.styleFrom(
           backgroundColor: navy,
+          disabledBackgroundColor: navy.withOpacity(0.7), // Faded when loading
           foregroundColor: Colors.white,
           elevation: 0,
           shadowColor: Colors.transparent,
@@ -760,29 +852,41 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
             borderRadius: BorderRadius.circular(18),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _isLogin ? "Login" : "Create Account",
-              style: GoogleFonts.inter(
-                fontSize: 15.5,
-                fontWeight: FontWeight.w700,
+        child: _isLoading
+            ? const SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  color: yellow,
+                  strokeWidth: 2.5,
+                ), // Sleek Loading Indicator
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _isLogin ? "Login" : "Create Account",
+                    style: GoogleFonts.inter(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: const BoxDecoration(
+                      color: yellow,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 16,
+                      color: navy,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(color: yellow, shape: BoxShape.circle),
-              child: const Icon(
-                Icons.arrow_forward_rounded,
-                size: 16,
-                color: navy,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

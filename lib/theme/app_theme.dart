@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -23,4 +24,11 @@ class AppTheme {
     FontWeight weight = FontWeight.w400,
     Color color = navy,
   }) => GoogleFonts.inter(fontSize: size, fontWeight: weight, color: color);
+}
+
+Route createPredictiveRoute(Widget page) {
+  return CupertinoPageRoute(
+    builder: (context) => page,
+    maintainState: true,
+  );
 }

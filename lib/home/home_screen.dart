@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../screens/location_select_screen.dart';
+import '../screens/map_screen.dart';
 import '../screens/profile_sidebar.dart';
 import '../theme/app_theme.dart';
+import '../widgets/activity_tab.dart';
 import 'custom_bottom_nav_bar.dart';
 import 'passenger_components.dart';
 
@@ -119,7 +121,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: AppTheme.bg,
       body: Stack(
         children: [
-          _buildMain(),
+          if (_navIndex == 0) _buildMain(),
+          if (_navIndex == 1) const MapTab(),
+          if (_navIndex == 2) const ActivityTab(),
           Align(
             alignment: Alignment.bottomCenter,
             child: CustomBottomNavBar(

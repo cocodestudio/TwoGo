@@ -10,8 +10,8 @@ class CustomBottomNavBar extends StatelessWidget {
 
   static const _svgs = [
     'assets/icons/home.svg',
-    'assets/icons/ride.svg',
     'assets/icons/map.svg',
+    'assets/icons/ride.svg',
   ];
 
   const CustomBottomNavBar({
