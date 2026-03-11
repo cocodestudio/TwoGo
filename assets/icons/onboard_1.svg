@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 360" fill="none">
+  <!-- Background subtle circle -->
+  <circle cx="200" cy="180" r="155" fill="#F7B32B" fill-opacity="0.08"/>
+  <circle cx="200" cy="180" r="120" fill="#022B3A" fill-opacity="0.04"/>
+
+  <!-- Road / Path -->
+  <ellipse cx="200" cy="300" rx="160" ry="18" fill="#022B3A" fill-opacity="0.07"/>
+  <rect x="60" y="288" width="280" height="10" rx="5" fill="#022B3A" fill-opacity="0.06"/>
+
+  <!-- Dashed center line -->
+  <line x1="90" y1="293" x2="115" y2="293" stroke="#F7B32B" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="16 10"/>
+  <line x1="145" y1="293" x2="170" y2="293" stroke="#F7B32B" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="16 10"/>
+  <line x1="200" y1="293" x2="225" y2="293" stroke="#F7B32B" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="16 10"/>
+  <line x1="255" y1="293" x2="280" y2="293" stroke="#F7B32B" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="16 10"/>
+  <line x1="310" y1="293" x2="330" y2="293" stroke="#F7B32B" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="16 10"/>
+
+  <!-- === SCOOTER / BIKE === -->
+  <!-- Rear wheel -->
+  <circle cx="148" cy="275" r="28" fill="white" stroke="#022B3A" stroke-width="4"/>
+  <circle cx="148" cy="275" r="18" fill="#022B3A" fill-opacity="0.08" stroke="#022B3A" stroke-width="2.5"/>
+  <circle cx="148" cy="275" r="6" fill="#022B3A"/>
+  <!-- Spoke lines -->
+  <line x1="148" y1="257" x2="148" y2="293" stroke="#022B3A" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="130" y1="275" x2="166" y2="275" stroke="#022B3A" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="135" y1="262" x2="161" y2="288" stroke="#022B3A" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="161" y1="262" x2="135" y2="288" stroke="#022B3A" stroke-width="1.5" stroke-opacity="0.4"/>
+
+  <!-- Front wheel -->
+  <circle cx="262" cy="275" r="28" fill="white" stroke="#022B3A" stroke-width="4"/>
+  <circle cx="262" cy="275" r="18" fill="#022B3A" fill-opacity="0.08" stroke="#022B3A" stroke-width="2.5"/>
+  <circle cx="262" cy="275" r="6" fill="#022B3A"/>
+  <line x1="262" y1="257" x2="262" y2="293" stroke="#022B3A" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="244" y1="275" x2="280" y2="275" stroke="#022B3A" stroke-width="1.5" stroke-opacity="0.4"/>
+
+  <!-- Bike frame -->
+  <path d="M148 275 L185 235 L245 235 L262 275" stroke="#022B3A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M185 235 L148 275" stroke="#022B3A" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Top tube -->
+  <path d="M185 235 L248 238" stroke="#022B3A" stroke-width="5" stroke-linecap="round" fill="none"/>
+
+  <!-- Scooter body / seat area -->
+  <rect x="168" y="225" width="75" height="18" rx="9" fill="#022B3A"/>
+  <!-- Yellow accent stripe -->
+  <rect x="168" y="232" width="75" height="5" rx="2.5" fill="#F7B32B"/>
+
+  <!-- Handlebar -->
+  <path d="M248 238 L272 222" stroke="#022B3A" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <rect x="265" y="216" width="20" height="7" rx="3.5" fill="#022B3A"/>
+
+  <!-- Footrest -->
+  <rect x="148" y="258" width="28" height="6" rx="3" fill="#F7B32B"/>
+
+  <!-- === RIDER (back) === -->
+  <!-- Helmet back rider -->
+  <circle cx="210" cy="175" r="26" fill="#022B3A"/>
+  <circle cx="210" cy="175" r="22" fill="#022B3A"/>
+  <!-- Helmet visor -->
+  <path d="M190 182 Q210 192 230 182" stroke="#F7B32B" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Helmet stripe -->
+  <path d="M188 172 Q210 165 232 172" stroke="#F7B32B" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Body back rider -->
+  <rect x="193" y="200" width="34" height="40" rx="10" fill="#022B3A"/>
+  <!-- Jacket detail -->
+  <path d="M193 215 L210 210 L227 215" stroke="#F7B32B" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- Arms on handlebar -->
+  <path d="M224 210 Q250 218 265 220" stroke="#022B3A" stroke-width="8" stroke-linecap="round" fill="none"/>
+
+  <!-- === PILLION RIDER === -->
+  <!-- Helmet pillion -->
+  <circle cx="180" cy="182" r="22" fill="#F7B32B"/>
+  <circle cx="180" cy="182" r="18" fill="#F7B32B"/>
+  <path d="M163 189 Q180 198 197 189" stroke="#022B3A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Hair (girl) -->
+  <path d="M163 180 Q162 196 168 205" stroke="#022B3A" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <path d="M197 180 Q198 196 192 205" stroke="#022B3A" stroke-width="3" stroke-linecap="round" fill="none"/>
+
+  <!-- Body pillion -->
+  <rect x="163" y="202" width="30" height="36" rx="9" fill="#F7B32B"/>
+  <!-- Backpack -->
+  <rect x="152" y="204" width="16" height="26" rx="5" fill="#022B3A"/>
+  <rect x="154" y="208" width="12" height="4" rx="2" fill="#F7B32B"/>
+
+  <!-- === LOCATION PIN floating === -->
+  <circle cx="310" cy="130" r="28" fill="#F7B32B" fill-opacity="0.15"/>
+  <path d="M310 108 C298 108 288 118 288 130 C288 148 310 166 310 166 C310 166 332 148 332 130 C332 118 322 108 310 108Z" fill="#F7B32B"/>
+  <circle cx="310" cy="130" r="9" fill="white"/>
+
+  <!-- Dotted path from pin down -->
+  <line x1="310" y1="166" x2="310" y2="185" stroke="#F7B32B" stroke-width="2" stroke-dasharray="4 4" stroke-linecap="round"/>
+
+  <!-- === SMALL DECORATIVE ELEMENTS === -->
+  <!-- Speed lines -->
+  <line x1="60" y1="268" x2="88" y2="268" stroke="#022B3A" stroke-width="2" stroke-linecap="round" stroke-opacity="0.2"/>
+  <line x1="52" y1="278" x2="78" y2="278" stroke="#022B3A" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.15"/>
+  <line x1="58" y1="258" x2="80" y2="258" stroke="#F7B32B" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.4"/>
+
+  <!-- Stars / sparkles -->
+  <circle cx="88" cy="140" r="4" fill="#F7B32B" fill-opacity="0.5"/>
+  <circle cx="340" cy="200" r="3" fill="#022B3A" fill-opacity="0.3"/>
+  <circle cx="75" cy="200" r="3" fill="#F7B32B" fill-opacity="0.4"/>
+
+  <!-- University building silhouette (right bg) -->
+  <rect x="330" y="240" width="50" height="50" rx="3" fill="#022B3A" fill-opacity="0.07"/>
+  <rect x="340" y="230" width="12" height="14" rx="1" fill="#022B3A" fill-opacity="0.07"/>
+  <rect x="358" y="230" width="12" height="14" rx="1" fill="#022B3A" fill-opacity="0.07"/>
+  <rect x="344" y="218" width="4" height="14" rx="1" fill="#F7B32B" fill-opacity="0.4"/>
+
+  <!-- Left tree suggestion -->
+  <circle cx="50" cy="245" r="20" fill="#022B3A" fill-opacity="0.07"/>
+  <rect x="46" y="262" width="8" height="18" rx="2" fill="#022B3A" fill-opacity="0.07"/>
+</svg>
