@@ -541,27 +541,24 @@ class _AdminDashboardState extends State<AdminDashboard>
                 ),
                 child: _recentActivities.isEmpty
                     ? Text(
-                        "No recent activity found",
-                        style: AppTheme.inter(size: 13, color: AppTheme.grey),
-                      )
+                  "No recent activity found",
+                  style: AppTheme.inter(size: 13, color: AppTheme.grey),
+                )
                     : Column(
-                        children: _recentActivities
-                            .map(
-                              (a) => AdminComponents.activityItem(
-                                icon: IconData(
-                                  a['icon'] ?? Icons.notifications.codePoint,
-                                  fontFamily: 'MaterialIcons',
-                                ),
-                                title: a['title'] ?? '',
-                                subtitle: a['subtitle'] ?? '',
-                                time: a['time'] ?? '',
-                                color: Color(
-                                  int.parse(a['color_hex'] ?? '0xFF022B3A'),
-                                ),
-                              ),
-                            )
-                            .toList(),
+                  children: _recentActivities
+                      .map(
+                        (a) => AdminComponents.activityItem(
+                      icon: Icons.notifications,
+                      title: a['title'] ?? '',
+                      subtitle: a['subtitle'] ?? '',
+                      time: a['time'] ?? '',
+                      color: Color(
+                        int.parse(a['color_hex'] ?? '0xFF022B3A'),
                       ),
+                    ),
+                  )
+                      .toList(),
+                ),
               ),
             ],
           ),
