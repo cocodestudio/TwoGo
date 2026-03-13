@@ -1,11 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import '../theme/app_theme.dart';
 
 class LocationSelectScreen extends StatefulWidget {
   final bool isFrom;
-
   const LocationSelectScreen({super.key, required this.isFrom});
 
   @override
@@ -19,6 +21,9 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
   late Animation<Offset> _slideAnim;
   late Animation<double> _fadeAnim;
   String _query = '';
+  final String _googleApiKey = "AIzaSyA11VNXW5_YRJXWJidux51prDDFjBsG91w";
+  List<dynamic> _placeList = [];
+  bool _isLoadingLocation = false;
 
   static const _recents = [
     (
@@ -37,42 +42,6 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
       sub: '3 days ago',
     ),
   ];
-
-  static const _suggestions = [
-    (
-      icon: Icons.school_rounded,
-      label: 'Shobhit University',
-      sub: 'Gangoh, Saharanpur',
-    ),
-    (
-      icon: Icons.location_city_rounded,
-      label: 'Saharanpur City Center',
-      sub: 'Near Clock Tower',
-    ),
-    (
-      icon: Icons.local_hospital_rounded,
-      label: 'District Hospital',
-      sub: 'Saharanpur',
-    ),
-    (
-      icon: Icons.train_rounded,
-      label: 'Saharanpur Railway Station',
-      sub: '3.2 km away',
-    ),
-    (
-      icon: Icons.shopping_bag_rounded,
-      label: 'Emporium Mall',
-      sub: 'Saharanpur',
-    ),
-    (icon: Icons.mosque_rounded, label: 'Dargah Sharif', sub: 'Saharanpur'),
-  ];
-
-  List<({IconData icon, String label, String sub})> get _filtered {
-    if (_query.isEmpty) return [];
-    return _suggestions
-        .where((s) => s.label.toLowerCase().contains(_query.toLowerCase()))
-        .toList();
-  }
 
   @override
   void initState() {
@@ -102,6 +71,63 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
     super.dispose();
   }
 
+  void _getSuggestion(String input) async {
+    if (input.isEmpty) {
+      setState(() => _placeList = []);
+      return;
+    }
+    String baseURL =
+        'https://maps.googleapis.com/maps/api/place/autocomplete/json';
+    String request =
+        '$baseURL?input=$input&key=$_googleApiKey&components=country:in';
+
+    try {
+      var response = await http.get(Uri.parse(request));
+      if (response.statusCode == 200) {
+        setState(() {
+          _placeList = jsonDecode(response.body)['predictions'];
+        });
+      }
+    } catch (e) {
+      debugPrint("API Error: $e");
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() => _isLoadingLocation = true);
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() => _isLoadingLocation = false);
+          return;
+        }
+      }
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        String address = [
+          place.street,
+          place.subLocality,
+          place.locality,
+        ].where((e) => e != null && e.isNotEmpty).join(", ");
+        _select(address.isNotEmpty ? address : "Current Location");
+      }
+    } catch (e) {
+      debugPrint("Location Error: $e");
+    } finally {
+      if (mounted) setState(() => _isLoadingLocation = false);
+    }
+  }
+
   void _select(String location) {
     HapticFeedback.selectionClick();
     Navigator.pop(context, location);
@@ -116,7 +142,6 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
       backgroundColor: AppTheme.bg,
       body: Stack(
         children: [
-          // Bg gradient
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -130,8 +155,6 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
               ),
             ),
           ),
-
-          // Top navy blob
           Positioned(
             top: -size.width * 0.4,
             left: -size.width * 0.2,
@@ -149,7 +172,6 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
               ),
             ),
           ),
-
           SafeArea(
             child: SlideTransition(
               position: _slideAnim,
@@ -158,7 +180,6 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header
                     Padding(
                       padding: const EdgeInsets.fromLTRB(8, 12, 20, 0),
                       child: Row(
@@ -195,7 +216,6 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
                               ],
                             ),
                           ),
-                          // Dot indicator
                           Container(
                             width: 12,
                             height: 12,
@@ -215,10 +235,7 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Search bar
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Container(
@@ -262,14 +279,20 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
                                   ),
                                   isDense: true,
                                 ),
-                                onChanged: (v) => setState(() => _query = v),
+                                onChanged: (v) {
+                                  setState(() => _query = v);
+                                  _getSuggestion(v);
+                                },
                               ),
                             ),
                             if (_query.isNotEmpty)
                               GestureDetector(
                                 onTap: () {
                                   _searchCtrl.clear();
-                                  setState(() => _query = '');
+                                  setState(() {
+                                    _query = '';
+                                    _placeList = [];
+                                  });
                                 },
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -286,14 +309,11 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Use current location
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: GestureDetector(
-                        onTap: () => _select('Current Location'),
+                        onTap: _isLoadingLocation ? null : _getCurrentLocation,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -316,34 +336,43 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
                                   color: AppTheme.yellow,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Icon(
-                                  Icons.my_location_rounded,
-                                  size: 18,
-                                  color: AppTheme.navy,
-                                ),
+                                child: _isLoadingLocation
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(10.0),
+                                        child: CircularProgressIndicator(
+                                          color: AppTheme.navy,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.my_location_rounded,
+                                        size: 18,
+                                        color: AppTheme.navy,
+                                      ),
                               ),
                               const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Use current location',
-                                    style: AppTheme.inter(
-                                      size: 13.5,
-                                      color: AppTheme.navy,
-                                      weight: FontWeight.w700,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Use current location',
+                                      style: AppTheme.inter(
+                                        size: 13.5,
+                                        color: AppTheme.navy,
+                                        weight: FontWeight.w700,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    'GPS — accurate to ~10m',
-                                    style: AppTheme.inter(
-                                      size: 11.5,
-                                      color: AppTheme.grey,
+                                    Text(
+                                      'GPS — accurate to ~10m',
+                                      style: AppTheme.inter(
+                                        size: 11.5,
+                                        color: AppTheme.grey,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                              const Spacer(),
                               Icon(
                                 Icons.chevron_right_rounded,
                                 color: AppTheme.navy.withOpacity(0.3),
@@ -354,10 +383,7 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Results / Recents
                     Expanded(
                       child: _query.isEmpty
                           ? _buildRecents()
@@ -413,8 +439,7 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
   }
 
   Widget _buildSearchResults() {
-    final results = _filtered;
-    if (results.isEmpty) {
+    if (_placeList.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -436,28 +461,35 @@ class _LocationSelectScreenState extends State<LocationSelectScreen>
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       physics: const BouncingScrollPhysics(),
-      itemCount: results.length,
+      itemCount: _placeList.length,
       separatorBuilder: (_, __) =>
           Divider(height: 1, color: AppTheme.grey.withOpacity(0.1), indent: 56),
-      itemBuilder: (_, i) => _LocationTile(
-        icon: results[i].icon,
-        label: results[i].label,
-        sub: results[i].sub,
-        onTap: () => _select(results[i].label),
-        iconBg: AppTheme.navy.withOpacity(0.06),
-        iconColor: AppTheme.navy,
-      ),
+      itemBuilder: (_, i) {
+        final place = _placeList[i];
+        final mainText =
+            place['structured_formatting']?['main_text'] ??
+            place['description'] ??
+            'Unknown location';
+        final subText = place['structured_formatting']?['secondary_text'] ?? '';
+
+        return _LocationTile(
+          icon: Icons.place_rounded,
+          label: mainText,
+          sub: subText,
+          onTap: () => _select(place['description']),
+          iconBg: AppTheme.navy.withOpacity(0.06),
+          iconColor: AppTheme.navy,
+        );
+      },
     );
   }
 }
 
 class _LocationTile extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final String sub;
+  final String label, sub;
   final VoidCallback onTap;
-  final Color iconBg;
-  final Color iconColor;
+  final Color iconBg, iconColor;
 
   const _LocationTile({
     required this.icon,
@@ -501,11 +533,15 @@ class _LocationTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    sub,
-                    style: AppTheme.inter(size: 11.5, color: AppTheme.grey),
-                  ),
+                  if (sub.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      sub,
+                      style: AppTheme.inter(size: 11.5, color: AppTheme.grey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
               ),
             ),

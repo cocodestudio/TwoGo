@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:twogo/home/rider_dashboard.dart';
 import '../screens/location_select_screen.dart';
 import '../screens/map_screen.dart';
 import '../screens/profile_sidebar.dart';
+import '../screens/rider_earning_tab.dart';
 import '../theme/app_theme.dart';
 import '../widgets/activity_tab.dart';
+import 'admin_dashboard.dart';
 import 'custom_bottom_nav_bar.dart';
 import 'passenger_components.dart';
 
+enum UserRole { passenger, rider, admin }
+
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final UserRole role;
+  const HomeScreen({super.key, this.role = UserRole.passenger});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -17,24 +24,19 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _navIndex = 0;
-
-  // Sidebar
   late AnimationController _sidebarCtrl;
   bool _sidebarOpen = false;
-
-  // Locations
+  late UserRole _currentRole;
   String _fromLocation = 'Set pickup location';
   String _toLocation = 'Set destination';
-
-  // Filter pills
   int _activeFilter = 0;
+
   static const _filters = [
     (icon: Icons.search_rounded, label: 'Search Route'),
     (icon: Icons.star_border_rounded, label: 'Saved'),
     (icon: Icons.history_rounded, label: 'Recent'),
   ];
 
-  // Mock nearby rides
   static const _rides = [
     (
       name: 'Rahul S.',
@@ -65,10 +67,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _currentRole = widget.role; // Initialize with passed role
+    _fetchUserRole(); // Then fetch from prefs to be safe
     _sidebarCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 340),
     );
+  }
+
+  Future<void> _fetchUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    final roleStr = prefs.getString('user_role');
+
+    if (roleStr != null) {
+      UserRole fetchedRole = UserRole.passenger;
+      if (roleStr == 'admin')
+        fetchedRole = UserRole.admin;
+      else if (roleStr == 'rider')
+        fetchedRole = UserRole.rider;
+
+      if (_currentRole != fetchedRole) {
+        setState(() {
+          _currentRole = fetchedRole;
+        });
+      }
+    }
   }
 
   @override
@@ -91,17 +114,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     HapticFeedback.selectionClick();
     final result = await Navigator.push<String>(
       context,
-      MaterialPageRoute(
-        builder: (context) => LocationSelectScreen(isFrom: isFrom),
-      ),
+      MaterialPageRoute(builder: (_) => LocationSelectScreen(isFrom: isFrom)),
     );
     if (result != null) {
       setState(() {
-        if (isFrom) {
+        if (isFrom)
           _fromLocation = result;
-        } else {
+        else
           _toLocation = result;
-        }
       });
     }
   }
@@ -115,30 +135,56 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
+  Widget _buildBody() {
+    // 🚨 FIX: Now checking _currentRole instead of _role
+    if (_currentRole == UserRole.admin) {
+      return AdminDashboard(onOpenSidebar: _openSidebar);
+    }
+
+    if (_currentRole == UserRole.rider) {
+      if (_navIndex == 0) return RiderDashboard(onOpenSidebar: _openSidebar);
+      if (_navIndex == 1) return const RiderEarningsTab();
+    }
+
+    // Default to passenger
+    if (_navIndex == 0) return _buildPassengerHome();
+    if (_navIndex == 1) return const MapTab();
+    if (_navIndex == 2) return const ActivityTab();
+    return _buildPassengerHome();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.bg,
       body: Stack(
         children: [
-          if (_navIndex == 0) _buildMain(),
-          if (_navIndex == 1) const MapTab(),
-          if (_navIndex == 2) const ActivityTab(),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: CustomBottomNavBar(
-              currentIndex: _navIndex,
-              onTap: (i) => setState(() => _navIndex = i),
+          // Main content
+          _buildBody(),
+
+          // 🚨 FIX: Checking _currentRole
+          if (_currentRole != UserRole.admin)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: CustomBottomNavBar(
+                currentIndex: _navIndex,
+                role: _currentRole, // Pass the correct role
+                onTap: (i) => setState(() => _navIndex = i),
+              ),
             ),
-          ),
+
           if (_sidebarOpen)
-            ProfileSidebar(controller: _sidebarCtrl, onClose: _closeSidebar),
+            ProfileSidebar(
+              controller: _sidebarCtrl,
+              onClose: _closeSidebar,
+              role: _currentRole, // Pass the correct role
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildMain() {
+  Widget _buildPassengerHome() {
     final size = MediaQuery.of(context).size;
     final topPad = MediaQuery.of(context).padding.top;
 
@@ -148,6 +194,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
@@ -200,6 +247,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(height: 22),
+
+          // Heading
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
@@ -221,6 +270,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(height: 20),
+
+          // Location card
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: PassengerComponents.locationInputCard(
@@ -232,6 +283,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(height: 20),
+
+          // Filter pills
           SizedBox(
             height: 40,
             child: ListView.separated(
@@ -249,6 +302,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(height: 28),
+
+          // Ride types
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: PassengerComponents.sectionHeader(title: 'Ride Types'),
@@ -289,6 +344,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(height: 28),
+
+          // Nearby rides
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: PassengerComponents.sectionHeader(
@@ -322,40 +379,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
+// ── Notification button ────────────────────────────────────────
 class _NotifButton extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: Colors.white,
+  Widget build(BuildContext context) => Stack(
+    children: [
+      Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12),
+          ],
+        ),
+        child: const Icon(
+          Icons.notifications_none_rounded,
+          color: AppTheme.navy,
+          size: 22,
+        ),
+      ),
+      Positioned(
+        top: 8,
+        right: 10,
+        child: Container(
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            color: Color(0xFFE53935),
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12),
-            ],
-          ),
-          child: const Icon(
-            Icons.notifications_none_rounded,
-            color: AppTheme.navy,
-            size: 22,
           ),
         ),
-        Positioned(
-          top: 8,
-          right: 10,
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE53935),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }

@@ -3,26 +3,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_theme.dart';
+import 'home_screen.dart';
 
 class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-
-  static const _svgs = [
-    'assets/icons/home.svg',
-    'assets/icons/map.svg',
-    'assets/icons/ride.svg',
-  ];
+  final UserRole role;
 
   const CustomBottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.role = UserRole.passenger,
   });
+
+  List<({String svg, String label})> get _items {
+    if (role == UserRole.rider) {
+      return [
+        (svg: 'assets/icons/home.svg', label: 'Home'),
+        (svg: 'assets/icons/earnings.svg', label: 'Earnings'),
+      ];
+    }
+    return [
+      (svg: 'assets/icons/home.svg', label: 'Home'),
+      (svg: 'assets/icons/map.svg', label: 'Map'),
+      (svg: 'assets/icons/ride.svg', label: 'Rides'),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
+    final items = _items;
 
     return Padding(
       padding: EdgeInsets.only(left: 28, right: 28, bottom: bottomPad + 18),
@@ -58,10 +70,10 @@ class CustomBottomNavBar extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: List.generate(
-                _svgs.length,
+                items.length,
                 (i) => Expanded(
                   child: _NavItem(
-                    svgString: _svgs[i],
+                    svgAsset: items[i].svg,
                     isActive: currentIndex == i,
                     onTap: () {
                       HapticFeedback.selectionClick();
@@ -79,54 +91,51 @@ class CustomBottomNavBar extends StatelessWidget {
 }
 
 class _NavItem extends StatelessWidget {
-  final String svgString;
+  final String svgAsset;
   final bool isActive;
   final VoidCallback onTap;
-
   const _NavItem({
-    required this.svgString,
+    required this.svgAsset,
     required this.isActive,
     required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-        decoration: BoxDecoration(
-          color: isActive ? AppTheme.yellow : Colors.transparent,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: AppTheme.yellow.withOpacity(0.38),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
-        ),
-        child: AnimatedScale(
-          scale: isActive ? 1.10 : 1.0,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutBack,
-          child: SvgPicture.asset(
-            svgString,
-            width: 22,
-            height: 22,
-            colorFilter: ColorFilter.mode(
-              isActive ? AppTheme.navy : Colors.white.withOpacity(0.50),
-              BlendMode.srcIn,
-            ),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    behavior: HitTestBehavior.opaque,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      decoration: BoxDecoration(
+        color: isActive ? AppTheme.yellow : Colors.transparent,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                  color: AppTheme.yellow.withOpacity(0.38),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : [],
+      ),
+      child: AnimatedScale(
+        scale: isActive ? 1.10 : 1.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutBack,
+        child: SvgPicture.asset(
+          svgAsset,
+          width: 22,
+          height: 22,
+          colorFilter: ColorFilter.mode(
+            isActive ? AppTheme.navy : Colors.white.withOpacity(0.50),
+            BlendMode.srcIn,
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }

@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:twogo/screens/onboarding_screen.dart';
+
+import '../home/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -46,7 +49,6 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 2200),
     );
 
-    // Background reveal
     _bgReveal = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _mainController,
@@ -54,7 +56,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Orb scale-ins (staggered)
     _orb1Scale = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _mainController,
@@ -74,7 +75,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Ripple rings
     _ringScale1 = Tween<double>(begin: 0.6, end: 1.6).animate(
       CurvedAnimation(
         parent: _mainController,
@@ -100,7 +100,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Logo
     _logoScale = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _mainController,
@@ -114,7 +113,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Tagline
     _taglineFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _mainController,
@@ -129,7 +127,6 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         );
 
-    // Credit line
     _creditFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _mainController,
@@ -164,19 +161,41 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _mainController.forward();
-    Timer(const Duration(milliseconds: 4000), () {
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const OnboardingScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 800),
-        ),
-      );
-    });
+    _startAuthCheck();
+  }
+
+  Future<void> _startAuthCheck() async {
+    await Future.delayed(const Duration(milliseconds: 4000));
+    if (!mounted) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('auth_token');
+    final String? roleStr = prefs.getString('user_role');
+
+    Widget nextScreen;
+
+    if (token != null && token.isNotEmpty) {
+      UserRole targetRole = UserRole.passenger;
+      if (roleStr == 'admin') {
+        targetRole = UserRole.admin;
+      } else if (roleStr == 'rider') {
+        targetRole = UserRole.rider;
+      }
+      nextScreen = HomeScreen(role: targetRole);
+    } else {
+      nextScreen = const OnboardingScreen();
+    }
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => nextScreen,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 800),
+      ),
+    );
   }
 
   @override

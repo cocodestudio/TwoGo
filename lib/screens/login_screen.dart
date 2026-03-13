@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../home/home_screen.dart';
 import '../utils/api_config.dart';
 import '../utils/custom_toast.dart';
+import 'package:http_parser/http_parser.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -39,6 +40,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   bool _obscureConfirm = true;
   bool _isLoading = false; // Loading State Backend ke liye
   String _role = 'passenger';
+  String _gender = 'male'; // ← ADDED
   String? _idImagePath;
 
   @override
@@ -144,19 +146,25 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       if (response.statusCode == 200 && data['success'] == true) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', data['token']);
-        await prefs.setString('user_role', data['user']['role']);
 
-        CustomToast.show(context, 'Maza aa gaya! Login Success.');
+        String userRoleStr = data['user']['role'];
+        await prefs.setString('user_role', userRoleStr);
 
         if (!mounted) return;
+        UserRole targetRole = UserRole.passenger;
+        if (userRoleStr == 'admin')
+          targetRole = UserRole.admin;
+        else if (userRoleStr == 'rider')
+          targetRole = UserRole.rider;
+
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => HomeScreen(role: targetRole)),
         );
       } else {
         CustomToast.show(
           context,
-          data['message'] ?? 'Login fail ho gaya',
+          data['message'] ?? 'Login failed.',
           isError: true,
         );
       }
@@ -202,13 +210,14 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         Uri.parse(ApiConfig.register),
       );
       request.headers.addAll({'Accept': 'application/json'});
-
       request.fields['name'] = _nameCtrl.text.trim();
       request.fields['email'] = _emailCtrl.text.trim();
       request.fields['password'] = _passCtrl.text;
-      request.fields['password_confirmation'] = _confirmCtrl.text;
+      request.fields['password_confirmation'] =
+          _confirmCtrl.text; // Exact match for Laravel 'confirmed'
       request.fields['roll_number'] = _rollCtrl.text.trim();
-      request.fields['role'] = _role;
+      request.fields['role'] = _role.toLowerCase(); // Safety lowercase
+      request.fields['gender'] = _gender.toLowerCase(); // Safety lowercase
 
       if (_idImagePath != null) {
         request.files.add(
@@ -216,14 +225,19 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         );
       }
 
+      print("Sending Register Request...");
+
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
+
+      print("Backend Response: ${response.statusCode} - ${response.body}");
+
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201 && data['success'] == true) {
         CustomToast.show(
           context,
-          'Account submitted! Please wait for admin approval to login.',
+          'Account submitted! Please wait for admin approval.',
         );
 
         _nameCtrl.clear();
@@ -234,14 +248,11 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
 
         _tabCtrl.animateTo(0);
       } else {
-        CustomToast.show(
-          context,
-          data['message'] ??
-              'Registration failed. Roll number or Email might be taken.',
-          isError: true,
-        );
+        String errorMsg = data['message'] ?? 'Registration failed.';
+        CustomToast.show(context, errorMsg, isError: true);
       }
     } catch (e) {
+      print("Register Catch Error: $e");
       CustomToast.show(
         context,
         'Network error. Try again later.',
@@ -252,7 +263,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     }
   }
 
-  // ════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -509,6 +519,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 icon: Icons.person_outline_rounded,
                 controller: _nameCtrl,
               ),
+              const SizedBox(height: 20),
+              _buildGenderSelector(),
               const SizedBox(height: 16),
             ],
             _field(
@@ -807,6 +819,109 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                       : null,
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Gender selector (Male / Female) ─────────────────────  ← NEW
+  Widget _buildGenderSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Gender",
+          style: GoogleFonts.inter(
+            color: navy,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F5F0),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: grey.withOpacity(0.16), width: 1),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _genderOption(
+                  value: 'male',
+                  icon: Icons.male_rounded,
+                  label: 'Male',
+                ),
+              ),
+              Container(width: 1, color: grey.withOpacity(0.15)),
+              Expanded(
+                child: _genderOption(
+                  value: 'female',
+                  icon: Icons.female_rounded,
+                  label: 'Female',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _genderOption({
+    required String value,
+    required IconData icon,
+    required String label,
+  }) {
+    final selected = _gender == value;
+    final isMale = value == 'male';
+    // Blue for male, pink for female — subtle premium colors
+    final color = isMale ? const Color(0xFF1565C0) : const Color(0xFFAD1457);
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _gender = value);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 230),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: selected ? color : Colors.transparent,
+          borderRadius: BorderRadius.horizontal(
+            left: isMale ? const Radius.circular(15) : Radius.zero,
+            right: isMale ? Radius.zero : const Radius.circular(15),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 230),
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: selected
+                    ? Colors.white.withOpacity(0.15)
+                    : Colors.transparent,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 19,
+                color: selected ? Colors.white : grey.withOpacity(0.7),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13.5,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? Colors.white : grey.withOpacity(0.8),
+              ),
             ),
           ],
         ),

@@ -129,7 +129,7 @@ class _ActivityTabState extends State<ActivityTab>
         Container(color: AppTheme.bg),
 
         SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           padding: EdgeInsets.only(top: topPad + 16, bottom: 130),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +239,7 @@ class _ActivityTabState extends State<ActivityTab>
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         itemCount: stats.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (_, i) => Container(
@@ -288,7 +288,7 @@ class _ActivityTabState extends State<ActivityTab>
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         itemCount: _filters.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {

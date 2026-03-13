@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "82405854516",
+    "project_id": "twogo-7e877",
+    "storage_bucket": "twogo-7e877.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:82405854516:android:94787bc823efbf2ec62961",
+        "android_client_info": {
+          "package_name": "com.cocode.twogo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0ROPc0cJJqQxz_3PIUGBzD2WHNlygLbo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
